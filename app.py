@@ -33,18 +33,18 @@ else:
 
 # --- Hardcoded User Profile ---
 USER_PROFILE = {
-    "power_zones": {
-        "1": "0-142w", "2": "143-193w", "3": "194-231w",
-        "4": "232-270w", "5": "271-308w", "6": "309-2000w"
-    },
-    "bike_heart_rate_zones": {
-        "1": "38-144bpm", "2": "145-152bpm", "3": "153-160bpm",
-        "4": "161-169bpm", "5": "170-178bpm", "6": "179-190bpm"
-    },
-    "run_heart_rate_zones": {
-        "1": "38-147bpm", "2": "148-156bpm", "3": "157-164bpm",
-        "4": "165-173bpm", "5": "174-182bpm", "6": "183-195bpm"
-    }
+    # "power_zones": {
+    #     "1": "0-142w", "2": "143-193w", "3": "194-231w",
+    #     "4": "232-270w", "5": "271-308w", "6": "309-2000w"
+    # },
+    # "bike_heart_rate_zones": {
+    #     "1": "38-144bpm", "2": "145-152bpm", "3": "153-160bpm",
+    #     "4": "161-169bpm", "5": "170-178bpm", "6": "179-190bpm"
+    # },
+    # "run_heart_rate_zones": {
+    #     "1": "38-147bpm", "2": "148-156bpm", "3": "157-164bpm",
+    #     "4": "165-173bpm", "5": "174-182bpm", "6": "183-195bpm"
+    # }
 }
 
 # --- Suggested Questions List ---
@@ -284,6 +284,14 @@ st.set_page_config(page_title="AI Training Coach", layout="centered")
 if "analysis_active" not in st.session_state: st.session_state.analysis_active = False
 if "yearly_summary" not in st.session_state: st.session_state.yearly_summary = None
 if "messages" not in st.session_state: st.session_state.messages = []
+
+# Debug - what files we are getting from server_data
+import os
+st.write(f"Current Working Directory: {os.getcwd()}")
+if os.path.exists("server_data"):
+    st.write(f"Files in server_data: {os.listdir('server_data')}")
+else:
+    st.write("server_data folder NOT found!")
 
 # --- AUTO-LOAD LOGIC ---
 # Get 'user' parameter from URL (e.g. ?user=johnsmith)

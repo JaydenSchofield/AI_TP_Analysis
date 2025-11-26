@@ -1,0 +1,7 @@
+WorkoutDay,WorkoutType,TimeTotalInHours,DistanceInMeters,PowerAverage,HeartRateAverage,TSS,IF,Rpe,Feeling
+2025-01-05,Bike,1.5,30000,210,150,60,0.75,5,good
+2025-02-10,Swim,0.5,2500,,120,20,,4,tired
+2025-03-12,Run,0.75,8000,,155,45,,6,ok
+2025-04-20,Bike,2.0,40000,230,152,90,0.82,7,good
+2025-05-15,Swim,0.6,2800,,118,25,,4,ok
+2025-06-18,Run,1.0,15000,,158,80,,8,strong

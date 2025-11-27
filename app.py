@@ -234,10 +234,12 @@ def get_yearly_ai_analysis(yearly_summary, user_question, user_profile=None):
         SPECIFIC DATA FOR QUERY: {data_context_str}
         
         INSTRUCTIONS:
+        - Focus on power metrics and heart rate metrics for cycling related questions.
+        - Focus on average pace and heart rate for running related questions.
+        - Focus on distance and workout descriptions or titles for swim related questions.
         - Answer directly using the SPECIFIC DATA.
         - Be concise and conversational (approx 4-5 sentences).
         - If specific days are in data, refer to them.
-        - Ask 1 relevant follow-up question.
         
         USER QUESTION: {user_question}
         """

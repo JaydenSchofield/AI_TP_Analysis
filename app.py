@@ -287,14 +287,6 @@ if "analysis_active" not in st.session_state: st.session_state.analysis_active =
 if "yearly_summary" not in st.session_state: st.session_state.yearly_summary = None
 if "messages" not in st.session_state: st.session_state.messages = []
 
-# Debug - what files we are getting from server_data
-import os
-st.write(f"Current Working Directory: {os.getcwd()}")
-if os.path.exists("server_data"):
-    st.write(f"Files in server_data: {os.listdir('server_data')}")
-else:
-    st.write("server_data folder NOT found!")
-
 # --- AUTO-LOAD LOGIC ---
 # Get 'user' parameter from URL (e.g. ?user=johnsmith)
 query_params = st.query_params

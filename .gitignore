@@ -1,16 +1,5 @@
-# Local environment
 .env
 .venv/
-
-# Data and caches
-server_data/
 __pycache__/
-*.pyc
+.streamlit/secrets.toml
 .DS_Store
-
-# Streamlit config
-.streamlit/
-
-# Notebook checkpoints
-.ipynb_checkpoints/
-

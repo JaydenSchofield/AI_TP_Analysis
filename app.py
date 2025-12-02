@@ -1,6 +1,6 @@
 """
 Yearly Workout Analysis Script using Google Gemini AI
-(Router-Enhanced Version with Instant UI Feedback & Logging)
+(Router-Enhanced Version with Recent-Bias Sampling)
 """
 import streamlit as st
 import pandas as pd
@@ -33,18 +33,18 @@ else:
 
 # --- Hardcoded User Profile ---
 USER_PROFILE = {
-    # "power_zones": {
-    #     "1": "0-142w", "2": "143-193w", "3": "194-231w",
-    #     "4": "232-270w", "5": "271-308w", "6": "309-2000w"
-    # },
-    # "bike_heart_rate_zones": {
-    #     "1": "38-144bpm", "2": "145-152bpm", "3": "153-160bpm",
-    #     "4": "161-169bpm", "5": "170-178bpm", "6": "179-190bpm"
-    # },
-    # "run_heart_rate_zones": {
-    #     "1": "38-147bpm", "2": "148-156bpm", "3": "157-164bpm",
-    #     "4": "165-173bpm", "5": "174-182bpm", "6": "183-195bpm"
-    # }
+    "power_zones": {
+        "1": "0-142w", "2": "143-193w", "3": "194-231w",
+        "4": "232-270w", "5": "271-308w", "6": "309-2000w"
+    },
+    "bike_heart_rate_zones": {
+        "1": "38-144bpm", "2": "145-152bpm", "3": "153-160bpm",
+        "4": "161-169bpm", "5": "170-178bpm", "6": "179-190bpm"
+    },
+    "run_heart_rate_zones": {
+        "1": "38-147bpm", "2": "148-156bpm", "3": "157-164bpm",
+        "4": "165-173bpm", "5": "174-182bpm", "6": "183-195bpm"
+    }
 }
 
 # --- Suggested Questions List ---
@@ -138,6 +138,9 @@ def create_yearly_summary(yearly_csv_path, metrics_csv_path=None):
     actual_cols = ['DistanceInMeters', 'TimeTotalInHours', 'PowerAverage', 'HeartRateAverage', 'TSS', 'IF', 'Sleep_Hours', 'BodyBattery_Avg']
     actual_stats = {col: safe_stats(completed[col]) for col in actual_cols if col in completed.columns}
     
+    # Ensure source_df is sorted by date so 'tail' gives recent workouts
+    df_sorted = df_yearly.sort_values(by='WorkoutDay_parsed', ascending=True).copy()
+
     yearly_summary = {
         'total_workouts': len(df_yearly),
         'completed_workouts': int(len(completed)),
@@ -146,16 +149,16 @@ def create_yearly_summary(yearly_csv_path, metrics_csv_path=None):
         'actual_stats': actual_stats,
         'data_quality': {col: {'non_null': int(df_yearly[col].notna().sum())} for col in df_yearly.columns},
         'data_preview': df_yearly.head(20).to_dict('records'),
-        'source_df': df_yearly.drop(columns=['WorkoutDay_parsed'], errors='ignore')
+        'source_df': df_sorted.drop(columns=['WorkoutDay_parsed'], errors='ignore')
     }
     
-    # Default Systematic Sample
+    # --- UPDATED SAMPLING LOGIC ---
+    # We now take the LAST 200 records (Most Recent) instead of a spread
     max_records = 200
-    if len(df_yearly) > max_records:
-        indices = [int(i * len(df_yearly) / max_records) for i in range(max_records)]
-        yearly_summary['default_sample'] = df_yearly.iloc[indices].to_dict('records')
+    if len(df_sorted) > max_records:
+        yearly_summary['default_sample'] = df_sorted.tail(max_records).to_dict('records')
     else:
-        yearly_summary['default_sample'] = df_yearly.to_dict('records')
+        yearly_summary['default_sample'] = df_sorted.to_dict('records')
         
     return yearly_summary
 
@@ -200,8 +203,9 @@ def get_relevant_data(yearly_summary, user_question):
     if row_count == 0: return yearly_summary['default_sample']
     elif row_count <= 300: return filtered_df.to_dict('records')
     else:
-        indices = [int(i * row_count / 300) for i in range(300)]
-        return filtered_df.iloc[indices].to_dict('records')
+        # UPDATED: If filter returns too many, prefer the most recent (tail)
+        # e.g. "How were my runs?" -> Get last 300 runs, not random 300
+        return filtered_df.tail(300).to_dict('records')
 
 def get_condensed_question(chat_history, new_question):
     """Condenses chat history."""
@@ -249,12 +253,7 @@ def get_yearly_ai_analysis(yearly_summary, user_question, user_profile=None):
 
 # --- UI LOGIC HANDLER ---
 def handle_user_query(query_text, method="chat_input"):
-    """
-    Handles the AI interaction loop with immediate UI feedback.
-    Args:
-        query_text: The text string the user wants to ask.
-        method: 'chat_input' or 'random_button' (for analytics)
-    """
+    """Handles the AI interaction loop with immediate UI feedback."""
     
     # 1. Save User Message to History
     st.session_state.messages.append({"role": "user", "content": query_text})
@@ -266,16 +265,14 @@ def handle_user_query(query_text, method="chat_input"):
     # 3. Generate AI Response (with visible spinner)
     with st.chat_message("assistant"):
         with st.spinner("Thinking..."):
-            # We capture 'condensed' here so we can log it later
             condensed = get_condensed_question(st.session_state.messages[:-1], query_text)
-            
             answer = get_yearly_ai_analysis(st.session_state.yearly_summary, condensed, USER_PROFILE)
             st.markdown(answer)
     
     # 4. Save AI Message to History
     st.session_state.messages.append({"role": "model", "content": answer})
 
-    # Retrieve the user parameter from the URL query params again, or default to "TestUser"
+    # 5. LOG TO GOOGLE SHEETS
     current_user = st.query_params.get("user", "TestUser")
     sheets_logger.log_interaction(query_text, condensed, answer, username=current_user)
 
@@ -288,36 +285,21 @@ if "yearly_summary" not in st.session_state: st.session_state.yearly_summary = N
 if "messages" not in st.session_state: st.session_state.messages = []
 
 # --- AUTO-LOAD LOGIC ---
-# Get 'user' parameter from URL (e.g. ?user=johnsmith)
 query_params = st.query_params
 user_param = query_params.get("user", None)
-
-# Directory where you will store the user files
 SERVER_DATA_DIR = os.path.join(os.path.dirname(__file__), "server_data")
 
-# Try to auto-load if user param exists
 if user_param:
-    # Construct file paths (e.g. johnsmithYearlySummary.csv)
     yearly_server_path = os.path.join(SERVER_DATA_DIR, f"{user_param}YearlySummary.csv")
     metrics_server_path = os.path.join(SERVER_DATA_DIR, f"{user_param}Metrics.csv")
     
-    # Check if the yearly summary exists for this user
     if os.path.exists(yearly_server_path):
         try:
-            # Load the data automatically
-            # We pass the metrics path only if it exists
             metrics_path = metrics_server_path if os.path.exists(metrics_server_path) else None
-            
             st.session_state.yearly_summary = create_yearly_summary(yearly_server_path, metrics_path)
             st.session_state.analysis_active = True
-            # Optional: Track who logged in via analytics
-            # sheets_logger.log_login(user_param) 
         except Exception as e:
             st.error(f"Error loading data for user '{user_param}': {e}")
-    else:
-        # If file doesn't exist, just do nothing and show standard upload screen
-        # (Or show a specific error like "User data not found")
-        pass
 
 @st.cache_data
 def load_data(yearly_file, metrics_file):
